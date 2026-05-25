@@ -4,12 +4,6 @@ variable "project_name" {
   default     = "serverless-ecommerce"
 }
 
-variable "aws_region" {
-  description = "AWS region for regional resources."
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "owner" {
   description = "Team or person responsible for the stack."
   type        = string
@@ -20,12 +14,6 @@ variable "allowed_cors_origins" {
   description = "Origins allowed to call the API."
   type        = list(string)
   default     = ["*"]
-}
-
-variable "cognito_mfa_configuration" {
-  description = "Cognito MFA configuration."
-  type        = string
-  default     = "OPTIONAL"
 }
 
 variable "cognito_callback_urls" {

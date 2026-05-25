@@ -3,8 +3,3 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "tags" {
-  description = "Reserved for future security resources such as WAF."
-  type        = map(string)
-  default     = {}
-}

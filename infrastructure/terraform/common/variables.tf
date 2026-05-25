@@ -19,12 +19,6 @@ variable "environment" {
   }
 }
 
-variable "aws_region" {
-  description = "AWS region for regional resources."
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "owner" {
   description = "Team or person responsible for the stack."
   type        = string
@@ -35,17 +29,6 @@ variable "allowed_cors_origins" {
   description = "Origins allowed to call the API."
   type        = list(string)
   default     = ["*"]
-}
-
-variable "cognito_mfa_configuration" {
-  description = "Cognito MFA configuration. Valid values are OFF, OPTIONAL, or ON."
-  type        = string
-  default     = "OPTIONAL"
-
-  validation {
-    condition     = contains(["OFF", "OPTIONAL", "ON"], var.cognito_mfa_configuration)
-    error_message = "cognito_mfa_configuration must be OFF, OPTIONAL, or ON."
-  }
 }
 
 variable "cognito_callback_urls" {
