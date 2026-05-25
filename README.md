@@ -1,1 +1,1 @@
-# serverless-ecommerce
+# serverless-ecommerce in dev
