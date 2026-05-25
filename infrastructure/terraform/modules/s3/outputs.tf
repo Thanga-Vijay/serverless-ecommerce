@@ -27,3 +27,8 @@ output "logs_bucket_domain_name" {
   description = "CloudFront logs bucket domain name."
   value       = aws_s3_bucket.this["logs"].bucket_domain_name
 }
+
+output "logs_bucket_acl_id" {
+  description = "Logs bucket ACL ID (for dependency ordering)."
+  value       = aws_s3_bucket_acl.logs.id
+}
