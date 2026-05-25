@@ -104,7 +104,7 @@ jobs:
 
       - name: TFLint
         working-directory: ${{ env.TF_ROOT }}
-        run: tflint --recursive
+        run: tflint --recursive --minimum-failure-severity=error
 
       - name: tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
