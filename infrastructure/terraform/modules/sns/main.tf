@@ -18,7 +18,7 @@ resource "aws_sns_topic_subscription" "email" {
 data "aws_iam_policy_document" "topic_policy" {
   statement {
     sid     = "DenyInsecureTransport"
-    actions = ["SNS:*"]
+    actions = ["sns:*"]
     effect  = "Deny"
 
     principals {
