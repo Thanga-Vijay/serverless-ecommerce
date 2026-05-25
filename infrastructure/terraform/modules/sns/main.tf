@@ -17,7 +17,7 @@ resource "aws_sns_topic_subscription" "email" {
 
 data "aws_iam_policy_document" "topic_policy" {
   statement {
-    sid     = "DenyInsecureTransport"
+    sid = "DenyInsecureTransport"
     actions = [
       "sns:Publish",
       "sns:Subscribe",
@@ -30,7 +30,7 @@ data "aws_iam_policy_document" "topic_policy" {
       "sns:DeleteTopic",
       "sns:AddPermission"
     ]
-    effect  = "Deny"
+    effect = "Deny"
 
     principals {
       type        = "*"

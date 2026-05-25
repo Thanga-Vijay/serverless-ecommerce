@@ -1,8 +1,8 @@
 locals {
   buckets = {
-    frontend        = "${var.name_prefix}-${var.frontend_bucket}"
-    product_images  = "${var.name_prefix}-${var.product_bucket}"
-    logs            = "${var.name_prefix}-access-logs"
+    frontend       = "${var.name_prefix}-${var.frontend_bucket}"
+    product_images = "${var.name_prefix}-${var.product_bucket}"
+    logs           = "${var.name_prefix}-access-logs"
   }
 }
 
