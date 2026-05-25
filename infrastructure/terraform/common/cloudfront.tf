@@ -7,4 +7,8 @@ module "cloudfront" {
   log_bucket_domain_name     = module.s3.logs_bucket_domain_name
   response_headers_policy_id = module.security.response_headers_policy_id
   tags                       = local.common_tags
+
+  depends_on = [
+    module.s3
+  ]
 }
