@@ -4,6 +4,12 @@ variable "project_name" {
   default     = "serverless-ecommerce"
 }
 
+variable "environment" {
+  description = "Deployment environment name."
+  type        = string
+  default     = "dev"
+}
+
 variable "owner" {
   description = "Team or person responsible for the stack."
   type        = string
