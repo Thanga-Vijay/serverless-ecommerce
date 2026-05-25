@@ -18,7 +18,18 @@ resource "aws_sns_topic_subscription" "email" {
 data "aws_iam_policy_document" "topic_policy" {
   statement {
     sid     = "DenyInsecureTransport"
-    actions = ["sns:*"]
+    actions = [
+      "sns:Publish",
+      "sns:Subscribe",
+      "sns:SetTopicAttributes",
+      "sns:RemovePermission",
+      "sns:Receive",
+      "sns:Publish",
+      "sns:ListSubscriptionsByTopic",
+      "sns:GetTopicAttributes",
+      "sns:DeleteTopic",
+      "sns:AddPermission"
+    ]
     effect  = "Deny"
 
     principals {

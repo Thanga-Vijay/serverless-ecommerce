@@ -3,11 +3,6 @@ variable "name_prefix" {
   type        = string
 }
 
-variable "terraform_bucket" {
-  description = "Existing or managed S3 bucket name for Terraform state."
-  type        = string
-}
-
 variable "frontend_bucket" {
   description = "Frontend bucket name suffix."
   type        = string

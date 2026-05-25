@@ -3,7 +3,6 @@ locals {
     frontend        = "${var.name_prefix}-${var.frontend_bucket}"
     product_images  = "${var.name_prefix}-${var.product_bucket}"
     logs            = "${var.name_prefix}-access-logs"
-    terraform_state = var.terraform_bucket
   }
 }
 
@@ -11,7 +10,7 @@ resource "aws_s3_bucket" "this" {
   for_each = local.buckets
 
   bucket        = each.value
-  force_destroy = each.key == "terraform_state" ? false : var.force_destroy
+  force_destroy = var.force_destroy
 
   tags = merge(var.tags, {
     Name = each.value
