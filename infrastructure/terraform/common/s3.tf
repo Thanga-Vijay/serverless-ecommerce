@@ -4,7 +4,6 @@ module "s3" {
   name_prefix     = local.s3_name_prefix
   frontend_bucket = "frontend-assets"
   product_bucket  = "product-images"
-  terraform_bucket = "tf-state-bucket-sls"
   force_destroy   = var.environment != "prod"
   allowed_origins = var.allowed_cors_origins
   tags            = local.common_tags
