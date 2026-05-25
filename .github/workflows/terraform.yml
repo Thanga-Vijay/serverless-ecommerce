@@ -1,0 +1,307 @@
+name: Terraform
+
+on:
+  push:
+    branches:
+      - "feature/**"
+      - dev
+      - main
+    paths:
+      - "infrastructure/terraform/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - "infrastructure/terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_ROOT: infrastructure/terraform
+  TF_ENV_ROOT: infrastructure/terraform/environments
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  TF_VERSION: 1.7.5
+  TFLINT_VERSION: v0.55.1
+
+jobs:
+  feature-checks:
+    name: Feature checks (${{ matrix.environment }})
+    if: github.event_name == 'push' && startsWith(github.ref_name, 'feature/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        environment:
+          - dev
+          - prod
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_ENV_ROOT }}/${{ matrix.environment }}
+
+    steps:
+      # Checkout the monorepo so Terraform can resolve shared modules.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Pin Terraform for reproducible CI behavior across runners.
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # Cache provider/plugin downloads to keep validation fast.
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ env.TF_VERSION }}-${{ hashFiles('infrastructure/terraform/**/*.tf') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-${{ env.TF_VERSION }}-
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          echo "plugin_cache_dir = \"$HOME/.terraform.d/plugin-cache\"" > "$HOME/.terraformrc"
+
+      # Feature branches use backend=false to avoid touching remote state or AWS.
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive ../..
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+
+      - name: TFLint init
+        working-directory: ${{ env.TF_ROOT }}
+        run: tflint --init
+
+      - name: TFLint
+        working-directory: ${{ env.TF_ROOT }}
+        run: tflint --recursive
+
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: ${{ env.TF_ROOT }}
+          soft_fail: false
+
+  pr-plan:
+    name: Pull request plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: ${{ github.base_ref == 'main' && 'prod' || 'dev' }}
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      DEPLOY_ENV: ${{ github.base_ref == 'main' && 'prod' || 'dev' }}
+      TF_WORKING_DIR: ${{ github.base_ref == 'main' && 'infrastructure/terraform/environments/prod' || 'infrastructure/terraform/environments/dev' }}
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ env.TF_VERSION }}-${{ hashFiles('infrastructure/terraform/**/*.tf') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-${{ env.TF_VERSION }}-
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          echo "plugin_cache_dir = \"$HOME/.terraform.d/plugin-cache\"" > "$HOME/.terraformrc"
+
+      # OIDC avoids long-lived AWS keys in GitHub secrets.
+      - name: Configure AWS credentials for dev
+        if: env.DEPLOY_ENV == 'dev'
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: terraform-pr-dev-${{ github.run_id }}
+
+      - name: Configure AWS credentials for prod
+        if: env.DEPLOY_ENV == 'prod'
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: terraform-pr-prod-${{ github.run_id }}
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform plan
+        id: plan
+        continue-on-error: true
+        run: |
+          terraform plan -no-color -input=false -out="${DEPLOY_ENV}.tfplan" 2>&1 | tee plan.txt
+          terraform show -no-color "${DEPLOY_ENV}.tfplan" > plan.full.txt
+
+      - name: Upload Terraform plan artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan-${{ env.DEPLOY_ENV }}-${{ github.event.pull_request.number }}
+          path: |
+            ${{ env.TF_WORKING_DIR }}/${{ env.DEPLOY_ENV }}.tfplan
+            ${{ env.TF_WORKING_DIR }}/plan.txt
+            ${{ env.TF_WORKING_DIR }}/plan.full.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      # Keep the PR comment readable while preserving the full plan as an artifact.
+      - name: Comment Terraform plan
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          DEPLOY_ENV: ${{ env.DEPLOY_ENV }}
+          PLAN_PATH: ${{ env.TF_WORKING_DIR }}/plan.txt
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = process.env.PLAN_PATH;
+            const marker = `<!-- terraform-plan:${process.env.DEPLOY_ENV} -->`;
+            const raw = fs.existsSync(path) ? fs.readFileSync(path, 'utf8') : 'Terraform plan output was not generated.';
+            const max = 60000;
+            const body = `${marker}
+            ## Terraform plan: \`${process.env.DEPLOY_ENV}\`
+
+            **Status:** \`${process.env.PLAN_OUTCOME}\`
+            **Working directory:** \`${process.env.PLAN_PATH.replace('/plan.txt', '')}\`
+
+            <details><summary>Show plan output</summary>
+
+            \`\`\`terraform
+            ${raw.slice(-max)}
+            \`\`\`
+
+            </details>
+
+            ${raw.length > max ? '_Plan output was truncated. Download the workflow artifact for the full plan._' : ''}`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const existing = comments.data.find(comment => comment.body && comment.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Fail if plan failed
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  apply:
+    name: Apply ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref_name == 'dev' || github.ref_name == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: terraform-apply-${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name }}
+      cancel-in-progress: false
+    env:
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+      TF_WORKING_DIR: ${{ format('infrastructure/terraform/environments/{0}', github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev')) }}
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Cache Terraform plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: terraform-${{ runner.os }}-${{ env.TF_VERSION }}-${{ hashFiles('infrastructure/terraform/**/*.tf') }}
+          restore-keys: |
+            terraform-${{ runner.os }}-${{ env.TF_VERSION }}-
+            terraform-${{ runner.os }}-
+
+      - name: Configure Terraform plugin cache
+        run: |
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          echo "plugin_cache_dir = \"$HOME/.terraform.d/plugin-cache\"" > "$HOME/.terraformrc"
+
+      # The prod GitHub Environment should require reviewers; dev can apply automatically.
+      - name: Configure AWS credentials for dev
+        if: env.DEPLOY_ENV == 'dev'
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: terraform-apply-dev-${{ github.run_id }}
+
+      - name: Configure AWS credentials for prod
+        if: env.DEPLOY_ENV == 'prod'
+        uses: aws-actions/configure-aws-credentials@v6.1.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: terraform-apply-prod-${{ github.run_id }}
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve -input=false
