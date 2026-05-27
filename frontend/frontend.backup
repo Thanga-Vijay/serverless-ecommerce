@@ -1,0 +1,153 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches:
+      - 'feature/**' # Run build/test for feature branches
+      - 'dev'        # Trigger deploy to dev
+      - 'main'       # Trigger deploy to prod (with approval)
+    paths:
+      - 'frontend/**' # Only run if changes are in the frontend directory
+  pull_request:
+    branches:
+      - 'dev'
+      - 'main'
+    paths:
+      - 'frontend/**' # Only run if changes are in the frontend directory
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20' # Specify Node.js version
+  WORKING_DIRECTORY: './frontend' # Monorepo frontend path
+  AWS_REGION: us-east-1 # Default AWS region, can be overridden by secrets if needed
+
+jobs:
+  build_and_test:
+    name: Build and Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Lint
+        run: npm run lint
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Run Tests
+        run: npm run test
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        # Note: If your Vite application requires environment-specific variables (e.g., VITE_API_URL)
+        # to be baked into the build, you might need to pass them here.
+        # Example: env: VITE_API_URL: ${{ secrets.VITE_API_URL_DEV }}
+        # For a multi-environment setup with a single build job, consider runtime configuration
+        # or separate build jobs for dev/prod if build-time env vars are critical.
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ${{ env.WORKING_DIRECTORY }}/dist # Assuming Vite builds to `dist`
+
+  deploy_dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+    environment:
+      name: dev
+      url: ${{ secrets.VITE_API_URL_DEV }} # Display URL in GitHub environment
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read # To checkout code (if needed, but artifact download is primary)
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: /tmp/frontend-build # Download to a temporary path
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3 (Development)
+        run: |
+          aws s3 sync /tmp/frontend-build/ s3://${{ secrets.AWS_S3_BUCKET_DEV }}/ \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "max-age=31536000,public,immutable"
+          aws s3 cp /tmp/frontend-build/index.html s3://${{ secrets.AWS_S3_BUCKET_DEV }}/ \
+            --cache-control "max-age=0,no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront Cache (Development)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID_DEV }} \
+            --paths "/*"
+        env:
+          AWS_PAGER: '' # Disable AWS CLI pager for CI/CD
+
+  deploy_prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build_and_test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: prod
+      url: ${{ secrets.VITE_API_URL_PROD }} # Display URL in GitHub environment
+      # Manual approval for production deployment can be configured in GitHub repository settings
+      # for the 'prod' environment under 'Required reviewers'.
+    permissions:
+      id-token: write # Required for OIDC authentication
+      contents: read # To checkout code (if needed)
+    steps:
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: /tmp/frontend-build
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3 (Production)
+        run: |
+          aws s3 sync /tmp/frontend-build/ s3://${{ secrets.AWS_S3_BUCKET_PROD }}/ \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "max-age=31536000,public,immutable"
+          aws s3 cp /tmp/frontend-build/index.html s3://${{ secrets.AWS_S3_BUCKET_PROD }}/ \
+            --cache-control "max-age=0,no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront Cache (Production)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID_PROD }} \
+            --paths "/*"
+        env:
+          AWS_PAGER: '' # Disable AWS CLI pager for CI/CD

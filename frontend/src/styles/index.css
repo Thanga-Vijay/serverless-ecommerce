@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  @apply box-border;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+.container {
+  @apply mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.btn-primary {
+  @apply px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition;
+}
+
+.btn-danger {
+  @apply px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition;
+}
+
+.input-field {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow p-6;
+}
+
+.loading {
+  @apply flex justify-center items-center h-screen;
+}
+
+.error-message {
+  @apply bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded;
+}
+
+.success-message {
+  @apply bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded;
+}

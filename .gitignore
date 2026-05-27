@@ -1,6 +1,11 @@
+# ==========================================
+# OS Files
+# ==========================================
 .DS_Store
 
+# ==========================================
 # Terraform
+# ==========================================
 **/.terraform/
 *.tfstate
 *.tfstate.*
@@ -12,3 +17,35 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 .terraform.lock.hcl
+
+# ==========================================
+# Frontend - Node / Vite / React
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Environment Files
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# ESLint Cache
+frontend/.eslintcache
+
+# Vite Cache
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# Mac / Linux temp
+*.swp
+*.swo
