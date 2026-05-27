@@ -1,28 +1,291 @@
-name: Frontend
+name: Frontend CI/CD
 
 on:
-  pull_request:
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend.yml"
   push:
     branches:
-      - dev
-      - main
+      - 'feature/**'
+      - 'dev'
+      - 'main'
     paths:
-      - "frontend/**"
-      - ".github/workflows/frontend.yml"
+      - 'frontend/**'
+
+  pull_request:
+    branches:
+      - 'dev'
+      - 'main'
+    paths:
+      - 'frontend/**'
+
+concurrency:
+  group: frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  WORKING_DIRECTORY: './frontend'
+  AWS_REGION: 'us-east-1'
 
 permissions:
+  id-token: write
   contents: read
 
 jobs:
-  frontend:
-    name: Frontend placeholder
+
+  # ==========================================================
+  # FEATURE BRANCH / PR VALIDATION
+  # ==========================================================
+  build_and_test:
+    name: Build and Test Frontend
     runs-on: ubuntu-latest
+
+    if: |
+      startsWith(github.ref, 'refs/heads/feature/') ||
+      github.event_name == 'pull_request'
+
     steps:
-      - name: Checkout
+      # ------------------------------------------------------
+      # Checkout Repository
+      # ------------------------------------------------------
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Placeholder
-        run: echo "Add frontend build, test, and deployment steps when the app stack is defined."
+      # ------------------------------------------------------
+      # Setup Node.js
+      # ------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      # ------------------------------------------------------
+      # Install Dependencies
+      # ------------------------------------------------------
+      - name: Install Dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      # ------------------------------------------------------
+      # Generate Development Environment File
+      # ------------------------------------------------------
+      - name: Generate .env.production
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          cat <<EOF > .env.production
+          VITE_ENV=development
+          VITE_API_URL=${{ vars.VITE_API_URL_DEV }}
+          VITE_COGNITO_REGION=${{ vars.VITE_COGNITO_REGION }}
+          VITE_COGNITO_USER_POOL_ID=${{ vars.VITE_COGNITO_USER_POOL_ID_DEV }}
+          VITE_COGNITO_CLIENT_ID=${{ vars.VITE_COGNITO_CLIENT_ID_DEV }}
+          VITE_COGNITO_DOMAIN=${{ vars.VITE_COGNITO_DOMAIN_DEV }}
+          VITE_S3_BUCKET=${{ vars.VITE_S3_BUCKET_DEV }}
+          VITE_S3_REGION=${{ vars.VITE_S3_REGION }}
+          EOF
+
+      # ------------------------------------------------------
+      # Lint
+      # ------------------------------------------------------
+      - name: Lint
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run lint
+
+      # ------------------------------------------------------
+      # Run Tests
+      # ------------------------------------------------------
+      - name: Run Tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run test
+
+      # ------------------------------------------------------
+      # Build Frontend
+      # ------------------------------------------------------
+      - name: Build Frontend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+  # ==========================================================
+  # DEPLOY TO DEV
+  # ==========================================================
+  deploy_dev:
+    name: Deploy Frontend to Dev
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/dev' && github.event_name == 'push'
+
+    environment:
+      name: dev
+
+    steps:
+      # ------------------------------------------------------
+      # Checkout Repository
+      # ------------------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------
+      # Setup Node.js
+      # ------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      # ------------------------------------------------------
+      # Install Dependencies
+      # ------------------------------------------------------
+      - name: Install Dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      # ------------------------------------------------------
+      # Generate DEV Environment File
+      # ------------------------------------------------------
+      - name: Generate DEV .env.production
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          cat <<EOF > .env.production
+          VITE_ENV=development
+          VITE_API_URL=${{ vars.VITE_API_URL_DEV }}
+          VITE_COGNITO_REGION=${{ vars.VITE_COGNITO_REGION }}
+          VITE_COGNITO_USER_POOL_ID=${{ vars.VITE_COGNITO_USER_POOL_ID_DEV }}
+          VITE_COGNITO_CLIENT_ID=${{ vars.VITE_COGNITO_CLIENT_ID_DEV }}
+          VITE_COGNITO_DOMAIN=${{ vars.VITE_COGNITO_DOMAIN_DEV }}
+          VITE_S3_BUCKET=${{ vars.VITE_S3_BUCKET_DEV }}
+          VITE_S3_REGION=${{ vars.VITE_S3_REGION }}
+          EOF
+
+      # ------------------------------------------------------
+      # Build Frontend
+      # ------------------------------------------------------
+      - name: Build Frontend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+      # ------------------------------------------------------
+      # Configure AWS Credentials
+      # ------------------------------------------------------
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_DEV }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ------------------------------------------------------
+      # Deploy to S3
+      # ------------------------------------------------------
+      - name: Deploy to S3
+        run: |
+          aws s3 sync ${{ env.WORKING_DIRECTORY }}/dist/ s3://${{ vars.AWS_S3_BUCKET_DEV }}/ \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "max-age=31536000,public,immutable"
+
+          aws s3 cp ${{ env.WORKING_DIRECTORY }}/dist/index.html \
+            s3://${{ vars.AWS_S3_BUCKET_DEV }}/index.html \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      # ------------------------------------------------------
+      # CloudFront Invalidation
+      # ------------------------------------------------------
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.AWS_CLOUDFRONT_DISTRIBUTION_ID_DEV }} \
+            --paths "/*"
+
+  # ==========================================================
+  # DEPLOY TO PROD
+  # ==========================================================
+  deploy_prod:
+    name: Deploy Frontend to Production
+    runs-on: ubuntu-latest
+
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment:
+      name: prod
+
+    steps:
+      # ------------------------------------------------------
+      # Checkout Repository
+      # ------------------------------------------------------
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------
+      # Setup Node.js
+      # ------------------------------------------------------
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/package-lock.json
+
+      # ------------------------------------------------------
+      # Install Dependencies
+      # ------------------------------------------------------
+      - name: Install Dependencies
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm ci
+
+      # ------------------------------------------------------
+      # Generate PROD Environment File
+      # ------------------------------------------------------
+      - name: Generate PROD .env.production
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          cat <<EOF > .env.production
+          VITE_ENV=production
+          VITE_API_URL=${{ vars.VITE_API_URL_PROD }}
+          VITE_COGNITO_REGION=${{ vars.VITE_COGNITO_REGION }}
+          VITE_COGNITO_USER_POOL_ID=${{ vars.VITE_COGNITO_USER_POOL_ID_PROD }}
+          VITE_COGNITO_CLIENT_ID=${{ vars.VITE_COGNITO_CLIENT_ID_PROD }}
+          VITE_COGNITO_DOMAIN=${{ vars.VITE_COGNITO_DOMAIN_PROD }}
+          VITE_S3_BUCKET=${{ vars.VITE_S3_BUCKET_PROD }}
+          VITE_S3_REGION=${{ vars.VITE_S3_REGION }}
+          EOF
+
+      # ------------------------------------------------------
+      # Build Frontend
+      # ------------------------------------------------------
+      - name: Build Frontend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: npm run build
+
+      # ------------------------------------------------------
+      # Configure AWS Credentials
+      # ------------------------------------------------------
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ------------------------------------------------------
+      # Deploy to S3
+      # ------------------------------------------------------
+      - name: Deploy to S3
+        run: |
+          aws s3 sync ${{ env.WORKING_DIRECTORY }}/dist/ s3://${{ vars.AWS_S3_BUCKET_PROD }}/ \
+            --delete \
+            --exclude "index.html" \
+            --cache-control "max-age=31536000,public,immutable"
+
+          aws s3 cp ${{ env.WORKING_DIRECTORY }}/dist/index.html \
+            s3://${{ vars.AWS_S3_BUCKET_PROD }}/index.html \
+            --cache-control "no-cache,no-store,must-revalidate" \
+            --content-type "text/html"
+
+      # ------------------------------------------------------
+      # CloudFront Invalidation
+      # ------------------------------------------------------
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.AWS_CLOUDFRONT_DISTRIBUTION_ID_PROD }} \
+            --paths "/*"

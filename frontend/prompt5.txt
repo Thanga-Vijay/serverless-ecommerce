@@ -1,0 +1,467 @@
+# PHASE 5 — React Frontend Application (Complete Detailed Guide)
+
+# Main Goal
+
+Build a production-grade frontend for your serverless e-commerce platform.
+
+Frontend responsibilities:
+
+* Authentication
+* Product browsing
+* Cart management
+* Checkout
+* Order history
+* Admin management
+* API communication
+* JWT handling
+
+Your frontend will communicate with:
+
+* Amazon API Gateway
+* Amazon Cognito
+* Amazon S3
+
+---
+
+# PHASE 5 Architecture Overview
+
+```text id="j6rjdp"
+React Frontend
+      │
+      ├── Cognito Authentication
+      │
+      ├── API Gateway APIs
+      │
+      ├── Redux State Management
+      │
+      ├── Protected Routes
+      │
+      ├── Admin Routes
+      │
+      └── S3 Image Upload Flow
+```
+
+---
+
+# Step 1 — Initialize Frontend Project
+
+# Manual Tasks
+
+## Create React App
+
+Run:
+
+```bash id="fhqk0k"
+npm create vite@latest frontend -- --template react
+```
+
+OR if later using TypeScript:
+
+```bash id="s1vhbf"
+npm create vite@latest frontend -- --template react-ts
+```
+
+---
+
+# Install Core Packages
+
+```bash id="t5dylv"
+cd frontend
+
+npm install react-router-dom axios redux react-redux @reduxjs/toolkit
+```
+
+---
+
+# Install Optional Packages
+
+```bash id="8djlwm"
+npm install react-hook-form zod
+```
+
+---
+
+# Install Tailwind CSS
+
+```bash id="8ggx1t"
+npm install -D tailwindcss postcss autoprefixer
+```
+
+---
+
+# Step 2 — Final Frontend Folder Structure
+
+```text id="78f26e"
+frontend/
+│
+├── public/
+│
+├── src/
+│   │
+│   ├── api/
+│   │   ├── axios.js
+│   │   ├── auth.api.js
+│   │   ├── product.api.js
+│   │   ├── cart.api.js
+│   │   └── order.api.js
+│   │
+│   ├── app/
+│   │   └── store.js
+│   │
+│   ├── components/
+│   │   ├── common/
+│   │   ├── layout/
+│   │   ├── forms/
+│   │   ├── product/
+│   │   ├── cart/
+│   │   └── admin/
+│   │
+│   ├── pages/
+│   │   ├── auth/
+│   │   ├── products/
+│   │   ├── cart/
+│   │   ├── checkout/
+│   │   ├── orders/
+│   │   └── admin/
+│   │
+│   ├── redux/
+│   │   ├── auth/
+│   │   ├── product/
+│   │   ├── cart/
+│   │   └── order/
+│   │
+│   ├── routes/
+│   │   ├── AppRoutes.jsx
+│   │   ├── ProtectedRoute.jsx
+│   │   └── AdminRoute.jsx
+│   │
+│   ├── hooks/
+│   ├── utils/
+│   ├── styles/
+│   │
+│   ├── App.jsx
+│   └── main.jsx
+│
+├── .env.development
+├── .env.production
+├── vite.config.js
+└── package.json
+```
+
+---
+
+# Step 3 — Pages You Must Build
+
+# Authentication
+
+| Page     | Purpose      |
+| -------- | ------------ |
+| Login    | User login   |
+| Register | User signup  |
+| Logout   | Clear tokens |
+
+---
+
+# Product Pages
+
+| Page            | Purpose             |
+| --------------- | ------------------- |
+| Product Listing | Show all products   |
+| Product Detail  | Single product view |
+| Search          | Product filtering   |
+
+---
+
+# Cart & Checkout
+
+| Page     | Purpose      |
+| -------- | ------------ |
+| Cart     | Manage cart  |
+| Checkout | Place order  |
+| Payment  | Payment page |
+
+---
+
+# Order Pages
+
+| Page          | Purpose               |
+| ------------- | --------------------- |
+| Order History | Previous orders       |
+| Order Detail  | Single order tracking |
+
+---
+
+# Admin Pages
+
+| Page               | Purpose      |
+| ------------------ | ------------ |
+| Dashboard          | Metrics      |
+| Product Management | CRUD         |
+| Order Management   | Admin orders |
+
+---
+
+# Step 4 — Authentication Flow
+
+# Architecture
+
+```text id="tvl09r"
+Frontend
+    ↓
+Cognito Login
+    ↓
+JWT Token
+    ↓
+Store Token
+    ↓
+Attach Token to API Calls
+    ↓
+API Gateway JWT Validation
+```
+
+---
+
+# What You Must Build
+
+# 1. Login Flow
+
+* Call Cognito
+* Get JWT token
+* Save token
+* Redirect user
+
+---
+
+# 2. Protected Routes
+
+Example:
+
+```text id="qbjlwm"
+/cart
+/orders
+/admin
+```
+
+should require login.
+
+---
+
+# 3. Role-Based Access
+
+Admin pages only for:
+
+* ADMIN role
+
+---
+
+# Step 5 — Redux State Management
+
+# Store These States
+
+| Slice        | Purpose       |
+| ------------ | ------------- |
+| authSlice    | User auth     |
+| productSlice | Products      |
+| cartSlice    | Shopping cart |
+| orderSlice   | Orders        |
+
+---
+
+# Example Flow
+
+```text id="gq2if6"
+Frontend Page
+    ↓
+Dispatch Redux Action
+    ↓
+API Call
+    ↓
+Store Response
+    ↓
+Update UI
+```
+
+---
+
+# Step 6 — API Integration Layer
+
+# Create Central Axios Client
+
+Responsibilities:
+
+* base URL
+* JWT token injection
+* interceptors
+* error handling
+
+---
+
+# API Structure
+
+```text id="92ohzm"
+src/api/
+│
+├── auth.api.js
+├── product.api.js
+├── cart.api.js
+└── order.api.js
+```
+
+---
+
+# Step 7 — Image Upload Architecture
+
+# Upload Flow
+
+```text id="fud98n"
+Frontend
+    ↓
+Request Presigned URL
+    ↓
+Backend Generates URL
+    ↓
+Frontend Uploads Directly to S3
+```
+
+This avoids:
+
+* Lambda size limits
+* API Gateway upload issues
+
+Enterprise best practice.
+
+---
+
+# Step 8 — Environment Variables
+
+# `.env.development`
+
+```text id="t6pl8o"
+VITE_API_URL=
+VITE_COGNITO_USER_POOL_ID=
+VITE_COGNITO_CLIENT_ID=
+```
+
+---
+
+# `.env.production`
+
+Production values.
+
+---
+
+# Step 9 — Frontend Security Best Practices
+
+Implement:
+
+* JWT validation
+* protected routes
+* avoid exposing secrets
+* API error handling
+* input validation
+* HTTPS only
+
+---
+
+# Step 10 — Frontend Testing
+
+Use:
+
+* Vitest
+* React Testing Library
+
+Test:
+
+* login
+* product rendering
+* cart actions
+* protected routes
+
+---
+
+# PHASE 5 DELIVERABLES
+
+```text id="axz5y7"
+✔ React frontend
+✔ JWT auth flow
+✔ Product pages
+✔ Cart functionality
+✔ Checkout flow
+✔ Admin panel
+✔ API integration
+✔ Redux setup
+✔ Responsive UI
+✔ Environment configs
+```
+
+---
+
+# COMPLETE PROMPT FOR PHASE 5
+
+```text id="9v3jlwm"
+Act as a senior frontend architect.
+
+Create a production-grade React frontend for a serverless ecommerce platform.
+
+Tech Stack:
+- React
+- Vite
+- JavaScript
+- Redux Toolkit
+- React Router
+- Axios
+- Tailwind CSS
+
+Architecture Requirements:
+- scalable folder structure
+- reusable components
+- API layer abstraction
+- environment configuration
+- protected routes
+- admin routes
+- centralized error handling
+- JWT authentication with Cognito
+- responsive UI
+- enterprise frontend standards
+
+Pages Required:
+- Login
+- Register
+- Product listing
+- Product details
+- Cart
+- Checkout
+- Order history
+- Admin dashboard
+- Product management
+- Order management
+
+Features:
+- JWT authentication
+- role-based access
+- Redux state management
+- API integration
+- image upload flow using presigned URLs
+- loading states
+- error handling
+- reusable layouts
+- protected routes
+- API interceptors
+
+Generate:
+- folder structure
+- React architecture
+- Redux setup
+- route setup
+- axios client
+- API examples
+- protected route implementation
+- admin route implementation
+- environment configuration
+- Tailwind setup
+- reusable component examples
+- frontend best practices
+- testing setup
+```
+
+---
