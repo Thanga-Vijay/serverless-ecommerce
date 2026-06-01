@@ -17,6 +17,11 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 .terraform.lock.hcl
+infrastructure/terraform/modules/lambda/bootstrap.zip
+
+# Backend - Node.js Lambda services
+backend/node_modules/
+backend/*/node_modules/
 
 # ==========================================
 # Frontend - Node / Vite / React

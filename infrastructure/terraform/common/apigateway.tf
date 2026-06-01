@@ -4,7 +4,7 @@ module "apigateway" {
   name_prefix                = local.name_prefix
   stage_name                 = var.environment
   routes                     = local.api_routes
-  lambda_integrations        = {}
+  lambda_integrations        = module.lambda.invoke_arns
   cognito_user_pool_endpoint = module.cognito.user_pool_endpoint
   cognito_app_client_id      = module.cognito.app_client_id
   allowed_cors_origins       = var.allowed_cors_origins

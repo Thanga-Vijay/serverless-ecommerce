@@ -129,17 +129,17 @@ locals {
     cart_get = {
       route_key          = "GET /cart"
       authorization_type = "JWT"
-      service            = "order-service"
+      service            = "cart-service"
     }
     cart_add_item = {
       route_key          = "POST /cart/items"
       authorization_type = "JWT"
-      service            = "order-service"
+      service            = "cart-service"
     }
     cart_delete_item = {
       route_key          = "DELETE /cart/items/{id}"
       authorization_type = "JWT"
-      service            = "order-service"
+      service            = "cart-service"
     }
     orders_create = {
       route_key          = "POST /orders"
@@ -159,7 +159,7 @@ locals {
     uploads_presigned_url = {
       route_key          = "POST /uploads/presigned-url"
       authorization_type = "JWT"
-      service            = "product-service"
+      service            = "upload-service"
     }
     admin_orders = {
       route_key          = "GET /admin/orders"
@@ -196,7 +196,7 @@ locals {
     }
   }
 
-  lambda_services = {
+  lambda_iam_services = {
     auth-service = {
       dynamodb_tables = ["users"]
       sqs_queues      = []
@@ -209,9 +209,15 @@ locals {
       sns_topics      = []
       s3_buckets      = ["product_images"]
     }
+    cart-service = {
+      dynamodb_tables = ["cart", "products"]
+      sqs_queues      = []
+      sns_topics      = []
+      s3_buckets      = []
+    }
     order-service = {
       dynamodb_tables = ["cart", "orders", "products", "inventory"]
-      sqs_queues      = ["order-processing-queue", "payment-processing-queue"]
+      sqs_queues      = ["order-processing-queue", "payment-processing-queue", "inventory-update-queue"]
       sns_topics      = ["order-notification-topic"]
       s3_buckets      = []
     }
@@ -232,6 +238,106 @@ locals {
       sqs_queues      = ["notification-queue"]
       sns_topics      = ["order-notification-topic"]
       s3_buckets      = []
+    }
+    upload-service = {
+      dynamodb_tables = ["products"]
+      sqs_queues      = []
+      sns_topics      = []
+      s3_buckets      = ["product_images"]
+    }
+  }
+
+  # Terraform owns runtime configuration; CI/CD owns deployed application ZIPs.
+  lambda_services = {
+    auth-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 15
+      memory_size = 256
+      environment_variables = {
+        USERS_TABLE = module.dynamodb.table_names["users"]
+      }
+      sqs_queue_arns = []
+    }
+    product-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 30
+      memory_size = 512
+      environment_variables = {
+        PRODUCTS_TABLE  = module.dynamodb.table_names["products"]
+        INVENTORY_TABLE = module.dynamodb.table_names["inventory"]
+        IMAGES_BUCKET   = module.s3.bucket_names["product_images"]
+      }
+      sqs_queue_arns = []
+    }
+    cart-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 20
+      memory_size = 256
+      environment_variables = {
+        CART_TABLE     = module.dynamodb.table_names["cart"]
+        PRODUCTS_TABLE = module.dynamodb.table_names["products"]
+      }
+      sqs_queue_arns = []
+    }
+    order-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 45
+      memory_size = 512
+      environment_variables = {
+        CART_TABLE               = module.dynamodb.table_names["cart"]
+        ORDERS_TABLE             = module.dynamodb.table_names["orders"]
+        PAYMENT_PROCESSING_QUEUE = module.sqs.queue_urls["payment-processing-queue"]
+        INVENTORY_UPDATE_QUEUE   = module.sqs.queue_urls["inventory-update-queue"]
+      }
+      sqs_queue_arns = []
+    }
+    payment-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 45
+      memory_size = 512
+      environment_variables = {
+        ORDERS_TABLE       = module.dynamodb.table_names["orders"]
+        NOTIFICATION_QUEUE = module.sqs.queue_urls["notification-queue"]
+      }
+      sqs_queue_arns = [module.sqs.queue_arns["payment-processing-queue"]]
+    }
+    inventory-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 30
+      memory_size = 256
+      environment_variables = {
+        INVENTORY_TABLE = module.dynamodb.table_names["inventory"]
+        PRODUCTS_TABLE  = module.dynamodb.table_names["products"]
+      }
+      sqs_queue_arns = [module.sqs.queue_arns["inventory-update-queue"]]
+    }
+    notification-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 30
+      memory_size = 256
+      environment_variables = {
+        USERS_TABLE               = module.dynamodb.table_names["users"]
+        ORDERS_TABLE              = module.dynamodb.table_names["orders"]
+        ORDER_NOTIFICATIONS_TOPIC = module.sns.topic_arns["order-notification-topic"]
+      }
+      sqs_queue_arns = [module.sqs.queue_arns["notification-queue"]]
+    }
+    upload-service = {
+      handler     = "index.handler"
+      runtime     = "nodejs20.x"
+      timeout     = 20
+      memory_size = 256
+      environment_variables = {
+        IMAGES_BUCKET = module.s3.bucket_names["product_images"]
+      }
+      sqs_queue_arns = []
     }
   }
 }
