@@ -1,57 +1,99 @@
-const AuthService = require('../services/auth.service');
-const ApiResponse = require('../../shared/src/response');
-const Logger = require('../../shared/src/logger');
-const { AppError } = require('../../shared/src/errors');
+const handlers = require('./src/handlers');
 
-const logger = new Logger('auth-handlers');
-
-exports.signup = async (event) => {
+exports.handler = async (event) => {
   try {
-    const { email, password, firstName, lastName } = JSON.parse(event.body || '{}');
-    const user = await AuthService.signup(email, password, firstName, lastName);
-    logger.info('Signup handler success', { userId: user.id });
-    return ApiResponse.success(user, 201, 'User registered successfully');
-  } catch (error) {
-    logger.error('Signup handler error', { error: error.message });
-    return ApiResponse.error(error);
-  }
-};
 
-exports.login = async (event) => {
-  try {
-    const { email, password } = JSON.parse(event.body || '{}');
-    const user = await AuthService.login(email, password);
-    const token = Buffer.from(JSON.stringify(user)).toString('base64');
-    logger.info('Login handler success', { userId: user.id });
-    return ApiResponse.success({ user, token }, 200, 'Login successful');
-  } catch (error) {
-    logger.error('Login handler error', { error: error.message });
-    return ApiResponse.error(error);
-  }
-};
+    // =====================================================
+    // REQUEST DETAILS
+    // =====================================================
+    const method =
+      event.requestContext?.http?.method ||
+      event.httpMethod;
 
-exports.getProfile = async (event) => {
-  try {
-    const userId = event.user?.userId || event.requestContext?.authorizer?.claims?.sub;
-    if (!userId) {
-      throw new AppError('User not authenticated', 401, 'AUTH_ERROR');
+    const path =
+      event.rawPath ||
+      event.path;
+
+    console.log('Incoming request:', {
+      method,
+      path
+    });
+
+    // =====================================================
+    // HEALTH CHECK
+    // =====================================================
+    if (method === 'GET' && path === '/health') {
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: 'healthy',
+          service: 'auth-service'
+        })
+      };
     }
-    const user = await AuthService.getProfile(userId);
-    logger.info('Get profile handler success', { userId });
-    return ApiResponse.success(user, 200, 'Profile retrieved');
-  } catch (error) {
-    logger.error('Get profile handler error', { error: error.message });
-    return ApiResponse.error(error);
-  }
-};
 
-exports.logout = async (event) => {
-  try {
-    const userId = event.user?.userId;
-    logger.info('User logout', { userId });
-    return ApiResponse.success({}, 200, 'Logout successful');
+    // =====================================================
+    // SIGNUP
+    // =====================================================
+    if (method === 'POST' && path === '/auth/signup') {
+      return await handlers.signup(event);
+    }
+
+    // =====================================================
+    // LOGIN
+    // =====================================================
+    if (method === 'POST' && path === '/auth/login') {
+      return await handlers.login(event);
+    }
+
+    // =====================================================
+    // GET PROFILE
+    // =====================================================
+    if (method === 'GET' && path === '/auth/profile') {
+      return await handlers.getProfile(event);
+    }
+
+    // =====================================================
+    // LOGOUT
+    // =====================================================
+    if (method === 'POST' && path === '/auth/logout') {
+      return await handlers.logout(event);
+    }
+
+    // =====================================================
+    // ROUTE NOT FOUND
+    // =====================================================
+    return {
+      statusCode: 404,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        error: {
+          message: `Unsupported route: ${method} ${path}`,
+          code: 'ROUTE_NOT_FOUND'
+        }
+      })
+    };
+
   } catch (error) {
-    logger.error('Logout handler error', { error: error.message });
-    return ApiResponse.error(error);
+
+    console.error('Unhandled Lambda error:', error);
+
+    return {
+      statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        error: {
+          message: 'Internal server error',
+          code: 'INTERNAL_SERVER_ERROR'
+        }
+      })
+    };
   }
 };

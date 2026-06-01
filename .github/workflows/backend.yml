@@ -368,10 +368,12 @@ jobs:
 
           cat <<EOF > payload.json
           {
-            "httpMethod": "GET",
-            "path": "/health",
+            "version": "2.0",
+            "routeKey": "GET /health",
+            "rawPath": "/health",
+            "rawQueryString": "",
             "headers": {
-              "Content-Type": "application/json"
+              "content-type": "application/json"
             },
             "requestContext": {
               "http": {
