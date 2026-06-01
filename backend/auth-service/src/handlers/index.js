@@ -38,7 +38,7 @@ exports.handler = async (event) => {
     // =====================================================
     // SIGNUP
     // =====================================================
-    if (method === 'POST' && path === '/auth/signup') {
+    if (method === 'POST' && path === '/auth/register') {
       return await handlers.signup(event);
     }
 

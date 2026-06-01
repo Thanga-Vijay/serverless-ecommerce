@@ -92,7 +92,7 @@ locals {
 
   api_routes = {
     auth_signup = {
-      route_key          = "POST /auth/signup"
+      route_key          = "POST /auth/register"
       authorization_type = "NONE"
       service            = "auth-service"
     }
