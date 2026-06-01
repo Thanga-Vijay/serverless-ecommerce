@@ -19,6 +19,17 @@ variable "environment" {
   }
 }
 
+variable "aws_region" {
+  description = "AWS region for regional infrastructure."
+  type        = string
+  default     = "us-east-1"
+
+  validation {
+    condition     = can(regex("^[a-z]{2}-[a-z]+-[0-9]+$", var.aws_region))
+    error_message = "aws_region must be a valid AWS region name."
+  }
+}
+
 variable "owner" {
   description = "Team or person responsible for the stack."
   type        = string

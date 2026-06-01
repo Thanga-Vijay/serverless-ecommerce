@@ -40,6 +40,15 @@ data "aws_iam_policy_document" "lambda" {
     resources = ["arn:aws:logs:*:*:log-group:/aws/lambda/${var.name_prefix}-${each.key}:*"]
   }
 
+  statement {
+    sid = "XRayTracing"
+    actions = [
+      "xray:PutTelemetryRecords",
+      "xray:PutTraceSegments"
+    ]
+    resources = ["*"]
+  }
+
   dynamic "statement" {
     for_each = length(each.value.dynamodb_tables) == 0 ? [] : [1]
     content {

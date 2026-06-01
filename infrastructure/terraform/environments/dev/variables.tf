@@ -10,6 +10,12 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "aws_region" {
+  description = "AWS region for regional infrastructure."
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "owner" {
   description = "Team or person responsible for the stack."
   type        = string

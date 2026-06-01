@@ -3,6 +3,7 @@ module "serverless_ecommerce" {
 
   project_name                     = var.project_name
   environment                      = "dev"
+  aws_region                       = var.aws_region
   owner                            = var.owner
   allowed_cors_origins             = var.allowed_cors_origins
   cognito_callback_urls            = var.cognito_callback_urls

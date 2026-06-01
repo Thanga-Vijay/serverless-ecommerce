@@ -1,11 +1,12 @@
-module "lambda_iam" {
-  source = "../modules/iam"
+module "lambda" {
+  source = "../modules/lambda"
 
-  name_prefix         = local.name_prefix
-  lambda_services     = local.lambda_services
-  dynamodb_table_arns = module.dynamodb.table_arns
-  sqs_queue_arns      = module.sqs.queue_arns
-  sns_topic_arns      = module.sns.topic_arns
-  s3_bucket_arns      = module.s3.bucket_arns
-  tags                = local.common_tags
+  name_prefix        = local.name_prefix
+  environment        = var.environment
+  aws_region         = data.aws_region.current.name
+  lambda_services    = local.lambda_services
+  lambda_role_arns   = module.lambda_iam.lambda_role_arns
+  api_source_account = data.aws_caller_identity.current.account_id
+  log_retention_days = var.log_retention_days
+  tags               = local.common_tags
 }

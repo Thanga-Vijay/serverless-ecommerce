@@ -1,467 +1,850 @@
-# PHASE 5 — React Frontend Application (Complete Detailed Guide)
+# PHASE 7 — Backend Lambda Services (Complete Detailed Guide)
 
 # Main Goal
 
-Build a production-grade frontend for your serverless e-commerce platform.
+Build production-grade backend microservices using:
 
-Frontend responsibilities:
-
-* Authentication
-* Product browsing
-* Cart management
-* Checkout
-* Order history
-* Admin management
-* API communication
-* JWT handling
-
-Your frontend will communicate with:
-
+* AWS Lambda
 * Amazon API Gateway
-* Amazon Cognito
-* Amazon S3
+* Amazon DynamoDB
+* Amazon SQS
+* Amazon SNS
+* AWS Step Functions
+
+This phase is where your actual business logic is built.
 
 ---
 
-# PHASE 5 Architecture Overview
+# PHASE 7 Architecture
 
-```text id="j6rjdp"
-React Frontend
-      │
-      ├── Cognito Authentication
-      │
-      ├── API Gateway APIs
-      │
-      ├── Redux State Management
-      │
-      ├── Protected Routes
-      │
-      ├── Admin Routes
-      │
-      └── S3 Image Upload Flow
-```
-
----
-
-# Step 1 — Initialize Frontend Project
-
-# Manual Tasks
-
-## Create React App
-
-Run:
-
-```bash id="fhqk0k"
-npm create vite@latest frontend -- --template react
-```
-
-OR if later using TypeScript:
-
-```bash id="s1vhbf"
-npm create vite@latest frontend -- --template react-ts
-```
-
----
-
-# Install Core Packages
-
-```bash id="t5dylv"
-cd frontend
-
-npm install react-router-dom axios redux react-redux @reduxjs/toolkit
-```
-
----
-
-# Install Optional Packages
-
-```bash id="8djlwm"
-npm install react-hook-form zod
-```
-
----
-
-# Install Tailwind CSS
-
-```bash id="8ggx1t"
-npm install -D tailwindcss postcss autoprefixer
-```
-
----
-
-# Step 2 — Final Frontend Folder Structure
-
-```text id="78f26e"
-frontend/
-│
-├── public/
-│
-├── src/
-│   │
-│   ├── api/
-│   │   ├── axios.js
-│   │   ├── auth.api.js
-│   │   ├── product.api.js
-│   │   ├── cart.api.js
-│   │   └── order.api.js
-│   │
-│   ├── app/
-│   │   └── store.js
-│   │
-│   ├── components/
-│   │   ├── common/
-│   │   ├── layout/
-│   │   ├── forms/
-│   │   ├── product/
-│   │   ├── cart/
-│   │   └── admin/
-│   │
-│   ├── pages/
-│   │   ├── auth/
-│   │   ├── products/
-│   │   ├── cart/
-│   │   ├── checkout/
-│   │   ├── orders/
-│   │   └── admin/
-│   │
-│   ├── redux/
-│   │   ├── auth/
-│   │   ├── product/
-│   │   ├── cart/
-│   │   └── order/
-│   │
-│   ├── routes/
-│   │   ├── AppRoutes.jsx
-│   │   ├── ProtectedRoute.jsx
-│   │   └── AdminRoute.jsx
-│   │
-│   ├── hooks/
-│   ├── utils/
-│   ├── styles/
-│   │
-│   ├── App.jsx
-│   └── main.jsx
-│
-├── .env.development
-├── .env.production
-├── vite.config.js
-└── package.json
-```
-
----
-
-# Step 3 — Pages You Must Build
-
-# Authentication
-
-| Page     | Purpose      |
-| -------- | ------------ |
-| Login    | User login   |
-| Register | User signup  |
-| Logout   | Clear tokens |
-
----
-
-# Product Pages
-
-| Page            | Purpose             |
-| --------------- | ------------------- |
-| Product Listing | Show all products   |
-| Product Detail  | Single product view |
-| Search          | Product filtering   |
-
----
-
-# Cart & Checkout
-
-| Page     | Purpose      |
-| -------- | ------------ |
-| Cart     | Manage cart  |
-| Checkout | Place order  |
-| Payment  | Payment page |
-
----
-
-# Order Pages
-
-| Page          | Purpose               |
-| ------------- | --------------------- |
-| Order History | Previous orders       |
-| Order Detail  | Single order tracking |
-
----
-
-# Admin Pages
-
-| Page               | Purpose      |
-| ------------------ | ------------ |
-| Dashboard          | Metrics      |
-| Product Management | CRUD         |
-| Order Management   | Admin orders |
-
----
-
-# Step 4 — Authentication Flow
-
-# Architecture
-
-```text id="tvl09r"
+```text id="jlwm501"
 Frontend
     ↓
-Cognito Login
+API Gateway
     ↓
-JWT Token
+Lambda Services
     ↓
-Store Token
-    ↓
-Attach Token to API Calls
-    ↓
-API Gateway JWT Validation
+DynamoDB / SQS / SNS / S3
 ```
 
 ---
 
-# What You Must Build
+# Backend Architecture Pattern
 
-# 1. Login Flow
+You are NOT building:
 
-* Call Cognito
-* Get JWT token
-* Save token
-* Redirect user
+* one huge Lambda
+
+You are building:
+
+* multiple microservice Lambdas
+
+Enterprise pattern.
 
 ---
 
-# 2. Protected Routes
+# Backend Services You Should Create
 
-Example:
+| Service              | Responsibility          |
+| -------------------- | ----------------------- |
+| auth-service         | Authentication APIs     |
+| product-service      | Product CRUD            |
+| cart-service         | Cart operations         |
+| order-service        | Order placement         |
+| inventory-service    | Stock handling          |
+| payment-service      | Payment workflow        |
+| notification-service | Email/SNS notifications |
+| upload-service       | Presigned S3 URLs       |
 
-```text id="qbjlwm"
-/cart
-/orders
-/admin
+---
+
+# Recommended Backend Folder Structure
+
+```text id="jlwm502"
+backend/
+│
+├── auth-service/
+│   ├── src/
+│   │   ├── handlers/
+│   │   ├── services/
+│   │   ├── repositories/
+│   │   ├── utils/
+│   │   ├── validations/
+│   │   └── middleware/
+│   │
+│   ├── tests/
+│   ├── package.json
+│   └── serverless.yml (optional)
+│
+├── product-service/
+├── cart-service/
+├── order-service/
+├── inventory-service/
+├── payment-service/
+├── notification-service/
+│
+└── shared/
+    ├── layers/
+    ├── utils/
+    ├── logger/
+    └── middleware/
 ```
 
-should require login.
-
 ---
 
-# 3. Role-Based Access
+# Backend Architecture Pattern
 
-Admin pages only for:
+Use:
 
-* ADMIN role
-
----
-
-# Step 5 — Redux State Management
-
-# Store These States
-
-| Slice        | Purpose       |
-| ------------ | ------------- |
-| authSlice    | User auth     |
-| productSlice | Products      |
-| cartSlice    | Shopping cart |
-| orderSlice   | Orders        |
+```text id="’wini503"
+handler
+   ↓
+service
+   ↓
+repository
+   ↓
+database
+```
 
 ---
 
 # Example Flow
 
-```text id="gq2if6"
-Frontend Page
-    ↓
-Dispatch Redux Action
-    ↓
-API Call
-    ↓
-Store Response
-    ↓
-Update UI
+```text id="’wini504"
+API Gateway
+   ↓
+createOrderHandler
+   ↓
+orderService
+   ↓
+orderRepository
+   ↓
+DynamoDB
 ```
 
 ---
 
-# Step 6 — API Integration Layer
+# What Each Layer Does
 
-# Create Central Axios Client
-
-Responsibilities:
-
-* base URL
-* JWT token injection
-* interceptors
-* error handling
+| Layer       | Responsibility        |
+| ----------- | --------------------- |
+| handler     | HTTP request handling |
+| service     | business logic        |
+| repository  | DB access             |
+| utils       | helpers               |
+| validations | request validation    |
 
 ---
 
-# API Structure
+# APIs You Should Build
 
-```text id="92ohzm"
-src/api/
-│
-├── auth.api.js
-├── product.api.js
-├── cart.api.js
-└── order.api.js
+# AUTH SERVICE
+
+| API               | Purpose  |
+| ----------------- | -------- |
+| POST /auth/signup | Register |
+| POST /auth/login  | Login    |
+| POST /auth/logout | Logout   |
+
+---
+
+# PRODUCT SERVICE
+
+| API                   | Purpose        |
+| --------------------- | -------------- |
+| GET /products         | List products  |
+| GET /products/{id}    | Product detail |
+| POST /products        | Create product |
+| PUT /products/{id}    | Update product |
+| DELETE /products/{id} | Delete product |
+
+---
+
+# CART SERVICE
+
+| API                     | Purpose       |
+| ----------------------- | ------------- |
+| GET /cart               | User cart     |
+| POST /cart/items        | Add cart item |
+| DELETE /cart/items/{id} | Remove item   |
+
+---
+
+# ORDER SERVICE
+
+| API              | Purpose      |
+| ---------------- | ------------ |
+| POST /orders     | Place order  |
+| GET /orders/{id} | Order detail |
+| GET /orders/user | User orders  |
+
+---
+
+# UPLOAD SERVICE
+
+| API                         | Purpose             |
+| --------------------------- | ------------------- |
+| POST /uploads/presigned-url | Generate upload URL |
+
+---
+
+# Critical Enterprise Features
+
+# 1. JWT Validation
+
+Every protected API should:
+
+* validate Cognito JWT
+* extract user identity
+
+---
+
+# 2. Structured Logging
+
+Use JSON logs.
+
+Example:
+
+```javascript id="’wini505"
+console.log(JSON.stringify({
+  level: "INFO",
+  message: "Order created",
+  orderId
+}))
 ```
 
 ---
 
-# Step 7 — Image Upload Architecture
+# 3. Input Validation
 
-# Upload Flow
+Validate:
 
-```text id="fud98n"
-Frontend
-    ↓
-Request Presigned URL
-    ↓
-Backend Generates URL
-    ↓
-Frontend Uploads Directly to S3
-```
-
-This avoids:
-
-* Lambda size limits
-* API Gateway upload issues
-
-Enterprise best practice.
-
----
-
-# Step 8 — Environment Variables
-
-# `.env.development`
-
-```text id="t6pl8o"
-VITE_API_URL=
-VITE_COGNITO_USER_POOL_ID=
-VITE_COGNITO_CLIENT_ID=
-```
-
----
-
-# `.env.production`
-
-Production values.
-
----
-
-# Step 9 — Frontend Security Best Practices
-
-Implement:
-
-* JWT validation
-* protected routes
-* avoid exposing secrets
-* API error handling
-* input validation
-* HTTPS only
-
----
-
-# Step 10 — Frontend Testing
+* request body
+* query params
+* path params
 
 Use:
 
-* Vitest
-* React Testing Library
+* zod
+* joi
+* yup
+
+---
+
+# 4. Centralized Error Handling
+
+Create reusable:
+
+* AppError
+* validation errors
+* auth errors
+
+---
+
+# 5. Shared Lambda Utilities
+
+Create reusable:
+
+* logger
+* response formatter
+* auth middleware
+* DynamoDB client
+
+---
+
+# DynamoDB Access Pattern
+
+Use:
+
+* AWS SDK v3
+
+Example:
+
+```javascript id="’wini506"
+@aws-sdk/client-dynamodb
+```
+
+---
+
+# Image Upload Flow
+
+# Upload Architecture
+
+```text id="’wini507"
+Frontend
+   ↓
+upload-service
+   ↓
+Generate Presigned URL
+   ↓
+Frontend Uploads to S3
+```
+
+---
+
+# Order Workflow Architecture
+
+```text id="’wini508"
+Place Order
+    ↓
+order-service
+    ↓
+SQS / Step Functions
+    ↓
+payment-service
+    ↓
+inventory-service
+    ↓
+notification-service
+```
+
+---
+
+# Backend Security Best Practices
+
+Implement:
+
+* least privilege IAM
+* environment variables
+* input sanitization
+* JWT auth
+* API authorization
+* avoid wildcard IAM
+
+---
+
+# Environment Variables Example
+
+```text id="’wini509"
+ORDERS_TABLE
+PRODUCTS_TABLE
+SQS_QUEUE_URL
+SNS_TOPIC_ARN
+```
+
+---
+
+# Backend Testing
+
+Use:
+
+* Jest
 
 Test:
 
-* login
-* product rendering
-* cart actions
-* protected routes
+* handlers
+* services
+* repositories
 
 ---
 
-# PHASE 5 DELIVERABLES
+# PHASE 7 DELIVERABLES
 
-```text id="axz5y7"
-✔ React frontend
-✔ JWT auth flow
-✔ Product pages
-✔ Cart functionality
-✔ Checkout flow
-✔ Admin panel
-✔ API integration
-✔ Redux setup
-✔ Responsive UI
-✔ Environment configs
+```text id="’wini510"
+✔ Multiple Lambda services
+✔ API Gateway integration
+✔ JWT authorization
+✔ DynamoDB integration
+✔ SQS/SNS integration
+✔ Upload service
+✔ Structured logging
+✔ Shared utilities
+✔ Unit tests
+✔ Clean architecture
 ```
 
 ---
 
-# COMPLETE PROMPT FOR PHASE 5
+# COMPLETE DETAILED PROMPT FOR PHASE 7
 
-```text id="9v3jlwm"
-Act as a senior frontend architect.
+```text id="’wini511"
+Act as a senior backend architect.
 
-Create a production-grade React frontend for a serverless ecommerce platform.
+Create a production-grade backend architecture for a serverless ecommerce platform using AWS Lambda and Node.js.
 
-Tech Stack:
-- React
-- Vite
+Project Stack:
+- Node.js
 - JavaScript
-- Redux Toolkit
-- React Router
-- Axios
-- Tailwind CSS
+- AWS Lambda
+- API Gateway
+- DynamoDB
+- SQS
+- SNS
+- Step Functions
+- Cognito JWT authentication
 
 Architecture Requirements:
+- clean architecture
 - scalable folder structure
-- reusable components
-- API layer abstraction
-- environment configuration
-- protected routes
-- admin routes
+- reusable shared utilities
+- service layer pattern
+- repository pattern
 - centralized error handling
-- JWT authentication with Cognito
-- responsive UI
-- enterprise frontend standards
+- structured logging
+- input validation
+- environment-based configuration
+- least privilege IAM
 
-Pages Required:
-- Login
-- Register
-- Product listing
-- Product details
-- Cart
-- Checkout
-- Order history
-- Admin dashboard
-- Product management
-- Order management
+Create Backend Services:
 
-Features:
-- JWT authentication
-- role-based access
-- Redux state management
-- API integration
-- image upload flow using presigned URLs
-- loading states
-- error handling
-- reusable layouts
-- protected routes
-- API interceptors
+1. auth-service
+2. product-service
+3. cart-service
+4. order-service
+5. inventory-service
+6. payment-service
+7. notification-service
+8. upload-service
 
 Generate:
 - folder structure
-- React architecture
-- Redux setup
-- route setup
-- axios client
+- Lambda handler examples
+- service layer examples
+- repository examples
+- DynamoDB access examples
+- centralized logger
+- auth middleware
+- JWT validation flow
+- reusable response formatter
+- validation examples
 - API examples
-- protected route implementation
-- admin route implementation
-- environment configuration
-- Tailwind setup
-- reusable component examples
-- frontend best practices
+- environment variable strategy
 - testing setup
+- shared utilities architecture
+
+Implement APIs:
+
+AUTH:
+- signup
+- login
+- logout
+
+PRODUCTS:
+- list products
+- get product
+- create product
+- update product
+- delete product
+
+CART:
+- get cart
+- add item
+- remove item
+
+ORDERS:
+- create order
+- get order
+- list user orders
+
+UPLOADS:
+- generate presigned upload URL
+
+Requirements:
+- AWS SDK v3
+- production-grade code structure
+- reusable middleware
+- structured JSON logging
+- proper async error handling
+- secure API patterns
+- scalable Lambda architecture
 ```
 
 ---
+
+# PHASE 8 — Backend CI/CD Pipeline (Complete Detailed Guide)
+
+# Main Goal
+
+Automate:
+
+* Lambda testing
+* Lambda packaging
+* deployment
+* environment promotion
+
+using:
+
+* GitHub Actions
+* Terraform
+* AWS Lambda deployment
+
+---
+
+# Backend CI/CD Architecture
+
+```text id="’wini512"
+GitHub Push
+    ↓
+backend.yml
+    ↓
+Detect Changed Services
+    ↓
+Install Dependencies
+    ↓
+Lint
+    ↓
+Run Tests
+    ↓
+Security Scan
+    ↓
+Package Lambda
+    ↓
+Terraform Apply
+    ↓
+Deploy Lambda
+```
+
+---
+
+# Important Enterprise Concept
+
+You should have:
+
+* ONE backend.yml
+
+NOT:
+
+* one YAML per Lambda
+
+---
+
+# How Single Pipeline Works
+
+Pipeline detects:
+
+* which service changed
+
+Then deploys only that service.
+
+---
+
+# Example
+
+If only:
+
+```text id="’wini513"
+backend/order-service/*
+```
+
+changed,
+
+pipeline deploys only:
+
+* order-service
+
+---
+
+# Backend Pipeline Responsibilities
+
+| Stage         | Purpose              |
+| ------------- | -------------------- |
+| Install       | install dependencies |
+| Lint          | code quality         |
+| Test          | validate logic       |
+| Security Scan | vulnerability checks |
+| Package       | create Lambda ZIP    |
+| Deploy        | update Lambda        |
+| Smoke Test    | validate deployment  |
+
+---
+
+# Recommended GitHub Workflow Structure
+
+```text id="’wini514"
+.github/workflows/backend.yml
+```
+
+---
+
+# Branch Strategy
+
+| Branch         | Action              |
+| -------------- | ------------------- |
+| feature/*      | lint + test + build |
+| PR to dev/main | validation          |
+| dev merge      | deploy dev          |
+| main merge     | deploy prod         |
+
+---
+
+# Recommended Pipeline Stages
+
+# 1. Detect Changed Services
+
+Use:
+
+* dorny/paths-filter
+
+---
+
+# 2. Install Dependencies
+
+```bash id="’wini515"
+npm ci
+```
+
+---
+
+# 3. Run Lint
+
+```bash id="’wini516"
+npm run lint
+```
+
+---
+
+# 4. Run Tests
+
+```bash id="’wini517"
+npm run test
+```
+
+---
+
+# 5. Security Scanning
+
+Use:
+
+* npm audit
+* snyk (optional)
+
+---
+
+# 6. Package Lambda
+
+Create ZIP:
+
+```text id="’wini518"
+dist.zip
+```
+
+---
+
+# 7. Upload Artifacts
+
+Optional:
+
+* GitHub artifacts
+* S3 artifacts
+
+---
+
+# 8. Terraform Deployment
+
+Recommended:
+
+* Terraform updates Lambda
+
+NOT:
+
+* direct aws lambda update-function-code
+
+---
+
+# Enterprise Deployment Architecture
+
+```text id="’wini519"
+GitHub Actions
+    ↓
+Build ZIP
+    ↓
+Upload ZIP to S3
+    ↓
+Terraform Apply
+    ↓
+Lambda Updated
+```
+
+---
+
+# Why Terraform Deployment Is Better
+
+| Benefit             | Reason                   |
+| ------------------- | ------------------------ |
+| No infra drift      | Terraform controls infra |
+| Versioning          | safer                    |
+| Rollback            | easier                   |
+| Enterprise standard | yes                      |
+
+---
+
+# Recommended Backend Deployment Pattern
+
+# Feature Branch
+
+Run:
+
+* lint
+* tests
+* build
+
+NO deploy.
+
+---
+
+# Dev Branch
+
+Deploy:
+
+* dev Lambdas
+
+---
+
+# Main Branch
+
+Deploy:
+
+* prod Lambdas
+* manual approval
+
+---
+
+# Required GitHub Secrets
+
+| Secret            | Purpose         |
+| ----------------- | --------------- |
+| AWS_ROLE_ARN_DEV  | Dev deployment  |
+| AWS_ROLE_ARN_PROD | Prod deployment |
+
+---
+
+# Recommended Security Scanning
+
+Use:
+
+* npm audit
+* dependency checks
+
+---
+
+# Recommended Packaging Strategy
+
+Package each Lambda independently.
+
+Example:
+
+```text id="’wini520"
+auth-service.zip
+product-service.zip
+order-service.zip
+```
+
+---
+
+# Recommended Artifact Structure
+
+```text id="’wini521"
+artifacts/
+├── auth-service.zip
+├── product-service.zip
+└── order-service.zip
+```
+
+---
+
+# Backend Deployment Best Practices
+
+Implement:
+
+* concurrency control
+* branch conditions
+* fail-fast
+* reusable jobs
+* environment protections
+
+---
+
+# PHASE 8 DELIVERABLES
+
+```text id="’wini522"
+✔ backend.yml
+✔ Automated Lambda deployment
+✔ Multi-service deployment
+✔ Security scanning
+✔ Artifact packaging
+✔ Dev/prod deployment
+✔ Terraform deployment integration
+✔ Environment protections
+```
+
+---
+
+# COMPLETE DETAILED PROMPT FOR PHASE 8
+
+```text id="’wini523"
+Act as a senior DevOps engineer.
+
+Create a production-grade GitHub Actions workflow named backend.yml for deploying multiple AWS Lambda backend services.
+
+Project Structure:
+backend/
+├── auth-service/
+├── product-service/
+├── cart-service/
+├── order-service/
+├── inventory-service/
+├── payment-service/
+├── notification-service/
+└── upload-service/
+
+Requirements:
+- single backend.yml
+- detect changed services
+- deploy only changed Lambdas
+- monorepo support
+- multi-environment deployment
+- GitHub OIDC authentication
+
+Branch Strategy:
+
+1. feature/* branches:
+- install dependencies
+- lint
+- run tests
+- package Lambdas
+- do NOT deploy
+
+2. Pull Requests to dev/main:
+- lint
+- tests
+- validation only
+
+3. Merge to dev:
+- deploy changed Lambdas to dev
+
+4. Merge to main:
+- deploy changed Lambdas to prod
+- require manual approval
+
+Pipeline Requirements:
+- dorny/paths-filter
+- dependency caching
+- concurrency control
+- fail-fast
+- reusable jobs
+- environment protections
+- production-grade logging
+
+Deployment Requirements:
+- package each Lambda independently
+- create ZIP artifacts
+- upload artifacts to S3
+- Terraform-based deployment
+- support future scaling
+
+Security Requirements:
+- GitHub OIDC authentication
+- least privilege permissions
+- npm audit scanning
+
+Generate:
+- complete backend.yml
+- changed-service detection logic
+- packaging strategy
+- deployment architecture
+- Lambda artifact strategy
+- required IAM permissions
+- GitHub secrets
+- Terraform deployment integration
+- backend CI/CD best practices
+```

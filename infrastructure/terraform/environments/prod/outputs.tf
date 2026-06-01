@@ -57,3 +57,18 @@ output "lambda_role_arns" {
   description = "Lambda IAM role ARNs."
   value       = module.serverless_ecommerce.lambda_role_arns
 }
+
+output "lambda_function_names" {
+  description = "Lambda function names keyed by service."
+  value       = module.serverless_ecommerce.lambda_function_names
+}
+
+output "lambda_function_arns" {
+  description = "Lambda function ARNs keyed by service."
+  value       = module.serverless_ecommerce.lambda_function_arns
+}
+
+output "lambda_invoke_arns" {
+  description = "Lambda invoke ARNs keyed by service."
+  value       = module.serverless_ecommerce.lambda_invoke_arns
+}

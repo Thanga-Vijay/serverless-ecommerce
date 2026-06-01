@@ -58,6 +58,21 @@ output "lambda_role_arns" {
   value       = module.lambda_iam.lambda_role_arns
 }
 
+output "lambda_function_names" {
+  description = "Lambda function names keyed by service."
+  value       = module.lambda.function_names
+}
+
+output "lambda_function_arns" {
+  description = "Lambda function ARNs keyed by service."
+  value       = module.lambda.function_arns
+}
+
+output "lambda_invoke_arns" {
+  description = "Lambda invoke ARNs keyed by service."
+  value       = module.lambda.invoke_arns
+}
+
 output "stepfunction_state_machine_arns" {
   description = "Step Functions state machine ARNs."
   value       = module.stepfunctions.state_machine_arns

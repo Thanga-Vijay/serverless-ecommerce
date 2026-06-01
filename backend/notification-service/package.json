@@ -1,0 +1,13 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint . --ext .js",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.600.0"
+  }
+}
