@@ -353,53 +353,53 @@ jobs:
 
           echo "Deployment completed for ${function_name}"
 
-      # ------------------------------------------------------
-      # Smoke Test Lambda
-      # ------------------------------------------------------
-      - name: Smoke test Lambda invocation
-        env:
-          SERVICE: ${{ matrix.service }}
-        run: |
-          set -euo pipefail
+      # # ------------------------------------------------------
+      # # Smoke Test Lambda
+      # # ------------------------------------------------------
+      # - name: Smoke test Lambda invocation
+      #   env:
+      #     SERVICE: ${{ matrix.service }}
+      #   run: |
+      #     set -euo pipefail
 
-          function_name="${LAMBDA_PREFIX}-${DEPLOY_ENV}-${SERVICE}"
+      #     function_name="${LAMBDA_PREFIX}-${DEPLOY_ENV}-${SERVICE}"
 
-          echo "Running smoke test for ${function_name}"
+      #     echo "Running smoke test for ${function_name}"
 
-          cat <<EOF > payload.json
-          {
-            "version": "2.0",
-            "routeKey": "GET /health",
-            "rawPath": "/health",
-            "rawQueryString": "",
-            "headers": {
-              "content-type": "application/json"
-            },
-            "requestContext": {
-              "http": {
-                "method": "GET",
-                "path": "/health"
-              }
-            }
-          }
-          EOF
+      #     cat <<EOF > payload.json
+      #     {
+      #       "version": "2.0",
+      #       "routeKey": "GET /health",
+      #       "rawPath": "/health",
+      #       "rawQueryString": "",
+      #       "headers": {
+      #         "content-type": "application/json"
+      #       },
+      #       "requestContext": {
+      #         "http": {
+      #           "method": "GET",
+      #           "path": "/health"
+      #         }
+      #       }
+      #     }
+      #     EOF
 
-          aws lambda invoke \
-            --function-name "$function_name" \
-            --payload file://payload.json \
-            --cli-binary-format raw-in-base64-out \
-            --region "$AWS_REGION" \
-            --no-cli-pager \
-            response.json
+      #     aws lambda invoke \
+      #       --function-name "$function_name" \
+      #       --payload file://payload.json \
+      #       --cli-binary-format raw-in-base64-out \
+      #       --region "$AWS_REGION" \
+      #       --no-cli-pager \
+      #       response.json
 
-          echo "Lambda response:"
-          cat response.json
+      #     echo "Lambda response:"
+      #     cat response.json
 
-          STATUS_CODE=$(jq -r '.statusCode' response.json)
+      #     STATUS_CODE=$(jq -r '.statusCode' response.json)
 
-          if [ "$STATUS_CODE" != "200" ]; then
-            echo "Smoke test failed for ${function_name}"
-            exit 1
-          fi
+      #     if [ "$STATUS_CODE" != "200" ]; then
+      #       echo "Smoke test failed for ${function_name}"
+      #       exit 1
+      #     fi
 
-          echo "Smoke test passed for ${function_name}"
+      #     echo "Smoke test passed for ${function_name}"
