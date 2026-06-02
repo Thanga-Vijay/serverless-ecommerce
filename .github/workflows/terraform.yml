@@ -303,5 +303,9 @@ jobs:
       - name: Terraform init
         run: terraform init
 
-      - name: Terraform apply
-        run: terraform apply -auto-approve -input=false
+      - name: Terraform destroy (dev only)
+        if: env.DEPLOY_ENV == 'dev'
+        run: terraform destroy -auto-approve -input=false
+
+      # - name: Terraform apply
+      #   run: terraform apply -auto-approve -input=false

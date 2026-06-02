@@ -1,27 +1,73 @@
 const handlers = require('./src/handlers');
-const ApiResponse = require('./shared/src/response');
 
-const routes = {
-  'POST /auth/signup': handlers.signup,
-  'POST /auth/login': handlers.login,
-  'GET /auth/profile': handlers.getProfile,
-  'POST /auth/logout': handlers.logout
+exports.handler = async (event) => {
+  try {
+    const method =
+      event.requestContext?.http?.method ||
+      event.httpMethod;
+
+    const path =
+      event.rawPath ||
+      event.path;
+
+    console.log('Incoming request:', { method, path });
+
+    // HEALTH CHECK
+    if (method === 'GET' && path === '/health') {
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'healthy',
+          service: 'auth-service'
+        })
+      };
+    }
+
+    // SIGNUP
+    if (method === 'POST' && path === '/auth/register') {
+      return await handlers.signup(event);
+    }
+
+    // LOGIN
+    if (method === 'POST' && path === '/auth/login') {
+      return await handlers.login(event);
+    }
+
+    // GET PROFILE
+    if (method === 'GET' && path === '/auth/profile') {
+      return await handlers.getProfile(event);
+    }
+
+    // LOGOUT
+    if (method === 'POST' && path === '/auth/logout') {
+      return await handlers.logout(event);
+    }
+
+    // ROUTE NOT FOUND
+    return {
+      statusCode: 404,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: {
+          message: `Unsupported route: ${method} ${path}`,
+          code: 'ROUTE_NOT_FOUND'
+        }
+      })
+    };
+
+  } catch (error) {
+    console.error('Unhandled Lambda error:', error);
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        error: {
+          message: 'Internal server error',
+          code: 'INTERNAL_SERVER_ERROR'
+        }
+      })
+    };
+  }
 };
-
-exports.handler = async (event, context) => {
-  const key = event.routeKey || `${event.requestContext?.http?.method} ${event.rawPath}`;
-  return routes[key] ? routes[key](event, context) : ApiResponse.error(new Error(`Unsupported route: ${key}`), 404);
-};
-
-if (method === 'OPTIONS') {
-  return {
-    statusCode: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-    },
-    body: ''
-  };
-}
 
