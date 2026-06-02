@@ -1,0 +1,151 @@
+service: serverless-ecommerce-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    AWS_REGION: ${self:provider.region}
+    ENVIRONMENT: ${self:provider.stage}
+    STAGE: ${self:provider.stage}
+    USERS_TABLE: users-${self:provider.stage}
+    PRODUCTS_TABLE: products-${self:provider.stage}
+    ORDERS_TABLE: orders-${self:provider.stage}
+    CARTS_TABLE: carts-${self:provider.stage}
+    INVENTORY_TABLE: inventory-${self:provider.stage}
+    UPLOADS_BUCKET: serverless-ecommerce-${self:provider.stage}-uploads
+    PRODUCT_IMAGES_BUCKET: serverless-ecommerce-${self:provider.stage}-product-images
+    PASSWORD_SALT: ${env:PASSWORD_SALT, 'dev-salt-change-in-prod'}
+    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret-change-in-prod'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - arn:aws:dynamodb:${self:provider.region}:*:table/users-${self:provider.stage}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/users-${self:provider.stage}/index/*
+            - arn:aws:dynamodb:${self:provider.region}:*:table/products-${self:provider.stage}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/orders-${self:provider.stage}
+            - arn:aws:dynamodb:${self:provider.stage}:*:table/carts-${self:provider.stage}
+            - arn:aws:dynamodb:${self:provider.region}:*:table/inventory-${self:provider.stage}
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - arn:aws:s3:::serverless-ecommerce-${self:provider.stage}-uploads/*
+            - arn:aws:s3:::serverless-ecommerce-${self:provider.stage}-product-images/*
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+          Resource:
+            - arn:aws:sqs:${self:provider.region}:*:orders-queue-${self:provider.stage}
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - arn:aws:sns:${self:provider.region}:*:orders-topic-${self:provider.stage}
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: arn:aws:logs:${self:provider.region}:*:*
+
+functions:
+  authService:
+    handler: auth-service/index.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - http:
+          path: /auth/register
+          method: post
+          cors: true
+      - http:
+          path: /auth/login
+          method: post
+          cors: true
+      - http:
+          path: /auth/profile
+          method: get
+          cors: true
+      - http:
+          path: /auth/logout
+          method: post
+          cors: true
+      - http:
+          path: /health
+          method: get
+          cors: true
+
+  productService:
+    handler: product-service/index.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - http:
+          path: /products
+          method: get
+          cors: true
+      - http:
+          path: /products/{id}
+          method: get
+          cors: true
+
+  orderService:
+    handler: order-service/index.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - http:
+          path: /orders
+          method: get
+          cors: true
+      - http:
+          path: /orders
+          method: post
+          cors: true
+
+  cartService:
+    handler: cart-service/index.handler
+    timeout: 30
+    memorySize: 256
+    events:
+      - http:
+          path: /cart
+          method: get
+          cors: true
+      - http:
+          path: /cart
+          method: post
+          cors: true
+
+plugins:
+  - serverless-offline
+  - serverless-dynamodb-local
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+    websocketPort: 3001
+  dynamodb:
+    stages:
+      - dev
+    start:
+      port: 8000
+      inMemory: true
+      migrate: true
